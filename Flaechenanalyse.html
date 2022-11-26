@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Bildanalyse</title>
+        <style>
+            body {
+                background-color: #0F0F0F;
+                color: #FFFFFF;
+            }
+
+            #selectedImage {
+                display: none;
+                max-width: 500px;
+                max-height: 500px;
+            }
+
+            .imageCanvas {
+                max-width: 500px;
+                max-height: 500px;
+                background-color: white;
+            }
+
+            .colorBox {
+              height: 20px;
+              width: 20px;
+              margin-bottom: 15px;
+              border: 1px solid white;
+            }
+
+            .colorOuterBox {
+              background-color: white;
+              height: 21px;
+              width: 21px;
+              margin-bottom: 15px;
+            }
+
+
+        </style>
+        <link rel="stylesheet" href="style.css">
+        <script type="text/javascript">
+            var backgroundColor = new Uint8Array([0, 0, 0, 0]);
+            var backgroundColorThreshold = 50;
+
+            function bodyLoaded() {
+                const imageInput = document.getElementById("uploadImageInput");
+                imageInput.onchange = function(e) {
+                    console.log("selected image");
+                    const fileReader = new FileReader();
+
+                    fileReader.onload = function() {
+                        document.getElementById("selectedImage").src = fileReader.result;
+                        console.log("read image, redrawing");
+                        setTimeout(drawToCanvas, 0);
+                    }
+                    fileReader.readAsDataURL(imageInput.files[0]);
+                }
+
+                const backgroundColorRangeInput = document.getElementById("backgroundColorRange");
+                backgroundColorRangeInput.onchange = function(e) {
+                    backgroundColorThreshold = parseInt(backgroundColorRangeInput.value);
+                    drawToCanvas();
+                }
+
+                const canvas = document.getElementById("myCanvas");
+                canvas.addEventListener('click', function(e) {
+                    let ctx = canvas.getContext("2d");
+                    console.log(e.offsetX, e.offsetY);
+                    const data = ctx.getImageData(e.offsetX, e.offsetY, 1, 1).data;
+                    // ctx.putImageData(data, 0, 0);
+                    console.log(data);
+
+                    backgroundColor = new Uint8Array(data);
+                    document.getElementById("backgroundColorBox");
+
+                    let backgroundColorStr = "#"+Array.from(backgroundColor).map((x) => x.toString(16)).join("");
+
+                    document.getElementById("backgroundColorBox").style.backgroundColor = backgroundColorStr;
+
+                    drawToCanvas();
+                }, false);
+            }
+
+            function drawToCanvas(){
+                console.log("drawToCanvas");
+                const canvas = document.getElementById("myCanvas");
+                const canvas2 = document.getElementById("myCanvas2");
+                const img = document.getElementById("selectedImage");
+
+                canvas.width = img.width;
+                canvas2.width = img.width;
+                canvas.height = img.height;
+                canvas2.height = img.height;
+
+                console.log(canvas);
+
+                const ctx = canvas.getContext("2d");
+                const ctx2 = canvas2.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+
+                let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                let processedData = new ImageData(
+                  new Uint8ClampedArray(imageData.data),
+                  imageData.width,
+                  imageData.height
+                );
+
+                //console.log(imageData);
+                let notBackgroundCounter = 0;
+                let leftMost = imageData.width;
+                let topMost = imageData.height;
+                let rightMost = 0;
+                let bottomMost = 0;
+
+                for (let y = 0; y < imageData.height; y++) {
+                    for (let x = 0; x < imageData.width; x++) {
+                        let i = y*imageData.width*4 + x * 4;
+
+                        let rgba = new Uint8Array([imageData.data[i], imageData.data[i+1], imageData.data[i+2], imageData.data[i+3]]);
+                        let colorVal = 0;
+
+                        if (isColorSimilar(rgba, backgroundColor, backgroundColorThreshold)) {
+                            colorVal = 255;
+                        } else {
+                            notBackgroundCounter++;
+                            if (x < leftMost) leftMost = x;
+                            if (y < topMost) topMost = y;
+                            if (x > rightMost) rightMost = x;
+                            if (y > bottomMost) bottomMost = y;
+                        }
+
+                        processedData.data[i] = colorVal;
+                        processedData.data[i+1] = colorVal;
+                        processedData.data[i+2] = colorVal;
+                        processedData.data[i+3] = 255;
+                    }
+                }
+
+                // debug visualitation
+                for (let y = 0; y < imageData.height; y++) {
+                    for (let x = 0; x < imageData.width; x++) {
+                        let i = y*imageData.width*4 + x * 4;
+
+                    }
+                }
+
+                //console.log(processedData);
+                ctx2.putImageData(processedData, 0, 0);
+
+                console.log(leftMost, topMost, rightMost, bottomMost);
+                ctx2.beginPath();
+                ctx2.lineWidth = 2;
+                ctx2.strokeStyle = "red";
+                ctx2.rect(leftMost-2, topMost-2, rightMost-leftMost+4, bottomMost-topMost+4);
+                ctx2.stroke();
+
+                // set percentageresult
+                let area = (rightMost-leftMost) * (bottomMost-topMost);
+                let percentage = 100* (notBackgroundCounter / area);
+                document.getElementById("percentageResult").innerHTML = percentage.toFixed(1) + "%";
+           }
+
+           function isColorSimilar(colorA, colorB, threshold) {
+               let sim = (colorA[0] + threshold >= colorB[0] && colorA[0] - threshold <= colorB[0] &&
+               colorA[1] + threshold >= colorB[1] && colorA[1] - threshold <= colorB[1] &&
+               colorA[2] + threshold >= colorB[2] && colorA[2] - threshold <= colorB[2] &&
+               colorA[3] + threshold >= colorB[3] && colorA[3] - threshold <= colorB[3]);
+               return sim;
+           }
+
+        </script>
+    </head>
+    <body onload="bodyLoaded();">
+        <h1>
+            Flächenanalyse
+        </h1>
+        <div>
+            <div id="imageDiv" width="100%" position="center">
+                <canvas class="imageCanvas" id="myCanvas">Your browser does not support the HTML5 canvas tag.</canvas>
+                <canvas class="imageCanvas" id="myCanvas2">Your browser does not support the HTML5 canvas tag.</canvas>
+                <img id="selectedImage" src="#"/>
+            </div>
+
+            Auf Bild klicken um Hintergrund auszuwählen: <div class="colorOuterBox"><div id="backgroundColorBox" class="colorBox"></div></div>
+            <label for="uploadImageInput">Bild auswählen:</label>
+            <input type="file" id="uploadImageInput" name="uploadImageInput" accept="image/png, image/gif, image/jpeg">
+            <label for="backgroundColorRange">Schwellwert für Hintergrundfarbe:</label>
+            <input type="range" min="0" max="255" value="50" class="slider" id="backgroundColorRange">
+            <div>Prozentuale Fläche im Rechteck die nicht der Hintergrundfarbe entspricht: <div id="percentageResult">?</div></div>
+        </div>
+    </body>
+</html>
