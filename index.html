@@ -65,8 +65,13 @@
                 const canvas = document.getElementById("myCanvas");
                 canvas.addEventListener('click', function(e) {
                     let ctx = canvas.getContext("2d");
-                    console.log(e.offsetX, e.offsetY);
-                    const data = ctx.getImageData(e.offsetX, e.offsetY, 1, 1).data;
+
+                    let bounds = canvas.getBoundingClientRect();
+                    let x = ((e.clientX - bounds.x) * (canvas.width / canvas.clientWidth));
+                    let y = ((e.clientY - bounds.y) * (canvas.height / canvas.clientHeight));
+
+                    console.log(x, y);
+                    const data = ctx.getImageData(x, y, 1, 1).data;
                     // ctx.putImageData(data, 0, 0);
                     console.log(data);
 
@@ -83,19 +88,21 @@
 
             function drawToCanvas(){
                 console.log("drawToCanvas");
+
                 const canvas = document.getElementById("myCanvas");
                 const canvas2 = document.getElementById("myCanvas2");
                 const img = document.getElementById("selectedImage");
 
-                canvas.width = img.width;
                 canvas2.width = img.width;
-                canvas.height = img.height;
                 canvas2.height = img.height;
+                canvas.width = img.width;
+                canvas.height = img.height;
 
                 console.log(canvas);
 
                 const ctx = canvas.getContext("2d");
                 const ctx2 = canvas2.getContext("2d");
+
                 ctx.drawImage(img, 0, 0);
 
                 let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -107,10 +114,10 @@
 
                 //console.log(imageData);
                 let notBackgroundCounter = 0;
-                let leftMost = imageData.width;
-                let topMost = imageData.height;
-                let rightMost = 0;
-                let bottomMost = 0;
+                let leftMost = imageData.width+10;
+                let topMost = imageData.height+10;
+                let rightMost = -10;
+                let bottomMost = -10;
 
                 for (let y = 0; y < imageData.height; y++) {
                     for (let x = 0; x < imageData.width; x++) {
@@ -190,3 +197,4 @@
         </div>
     </body>
 </html>
+
