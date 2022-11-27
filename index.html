@@ -34,6 +34,12 @@
               width: 21px;
               margin-bottom: 15px;
             }
+            
+            .settingsDiv {
+                display: flex;
+                margin: 10px;
+                column-gap: 10px;
+            }
 
 
         </style>
@@ -51,15 +57,20 @@
                     fileReader.onload = function() {
                         document.getElementById("selectedImage").src = fileReader.result;
                         console.log("read image, redrawing");
-                        setTimeout(drawToCanvas, 0);
+                        setTimeout(function() {
+                            drawOriginal(); 
+                            guessBackgroundColor();
+                            drawResult();
+                        }, 0);
                     }
                     fileReader.readAsDataURL(imageInput.files[0]);
                 }
 
                 const backgroundColorRangeInput = document.getElementById("backgroundColorRange");
+                backgroundColorRangeInput.value = backgroundColorThreshold;
                 backgroundColorRangeInput.onchange = function(e) {
                     backgroundColorThreshold = parseInt(backgroundColorRangeInput.value);
-                    drawToCanvas();
+                    drawResult();
                 }
 
                 const canvas = document.getElementById("myCanvas");
@@ -75,35 +86,52 @@
                     // ctx.putImageData(data, 0, 0);
                     console.log(data);
 
-                    backgroundColor = new Uint8Array(data);
-                    document.getElementById("backgroundColorBox");
-
-                    let backgroundColorStr = "#"+Array.from(backgroundColor).map((x) => x.toString(16)).join("");
-
-                    document.getElementById("backgroundColorBox").style.backgroundColor = backgroundColorStr;
-
-                    drawToCanvas();
+                    let backgroundColor = new Uint8Array(data);
+                    setBackgroundColor(backgroundColor);
+                    
+                    setTimeout(drawResult, 0);
                 }, false);
             }
+            
+            function setBackgroundColor(color /*: Uint8Array*/) {
+                console.log("setting backgroundColor to", color);
+                backgroundColor = color;
+                //let colorBoxVis = document.getElementById("backgroundColorBox");
+                let backgroundColorStr = "#"+Array.from(backgroundColor).map((x) => x.toString(16).padStart(2, "0")).join("");
+                console.log(backgroundColorStr, backgroundColor);
+                document.getElementById("backgroundColorBox").style.backgroundColor = backgroundColorStr;
+                document.getElementById("backgroundColorTextDiv").innerHTML = backgroundColorStr;
+            }
+            
+            function guessBackgroundColor() {
+                const canvas = document.getElementById("myCanvas");
+                let ctx = canvas.getContext("2d");
+                const data = ctx.getImageData(0, 0, 1, 1).data;
+                let backgroundColor = new Uint8Array(data);
+                
+                setBackgroundColor(backgroundColor);
+            }
+            
+            function drawOriginal() {
+                const img = document.getElementById("selectedImage");
+                const canvas = document.getElementById("myCanvas");
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+            }
 
-            function drawToCanvas(){
-                console.log("drawToCanvas");
+            function drawResult(){
+                console.log("drawResult");
 
                 const canvas = document.getElementById("myCanvas");
                 const canvas2 = document.getElementById("myCanvas2");
-                const img = document.getElementById("selectedImage");
-
-                canvas2.width = img.width;
-                canvas2.height = img.height;
-                canvas.width = img.width;
-                canvas.height = img.height;
-
-                console.log(canvas);
-
-                const ctx = canvas.getContext("2d");
+                
+                canvas2.width = canvas.width;
+                canvas2.height = canvas.height;
+ 
                 const ctx2 = canvas2.getContext("2d");
-
-                ctx.drawImage(img, 0, 0);
+                const ctx = canvas.getContext("2d");
 
                 let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let processedData = new ImageData(
@@ -187,14 +215,23 @@
                 <canvas class="imageCanvas" id="myCanvas2">Your browser does not support the HTML5 canvas tag.</canvas>
                 <img id="selectedImage" src="#"/>
             </div>
-
-            Auf Bild klicken um Hintergrund auszuwählen: <div class="colorOuterBox"><div id="backgroundColorBox" class="colorBox"></div></div>
-            <label for="uploadImageInput">Bild auswählen:</label>
-            <input type="file" id="uploadImageInput" name="uploadImageInput" accept="image/png, image/gif, image/jpeg">
-            <label for="backgroundColorRange">Schwellwert für Hintergrundfarbe:</label>
-            <input type="range" min="0" max="255" value="50" class="slider" id="backgroundColorRange">
-            <div>Prozentuale Fläche im Rechteck die nicht der Hintergrundfarbe entspricht: <div id="percentageResult">?</div></div>
+            
+            <div class="settingsDiv">
+                Auf Bild klicken um Hintergrund auszuwählen: <div class="colorOuterBox"><div id="backgroundColorBox" class="colorBox"></div></div>
+                <div id="backgroundColorTextDiv"></div>
+            </div>
+            <div class="settingsDiv">
+                <label for="uploadImageInput">Bild auswählen: </label>
+                <input type="file" id="uploadImageInput" name="uploadImageInput" accept="image/png, image/gif, image/jpeg">
+            </div>
+            <div class="settingsDiv">
+                <label for="backgroundColorRange">Schwellwert für Hintergrundfarbe: </label>
+                <input type="range" min="0" max="255" value="50" class="slider" id="backgroundColorRange">
+            </div>
+            <div class="settingsDiv">
+                Prozentuale Fläche im Rechteck die nicht der Hintergrundfarbe entspricht: 
+                <div id="percentageResult">?</div
+            </div>
         </div>
     </body>
 </html>
-
